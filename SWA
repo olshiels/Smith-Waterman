@@ -1,0 +1,73 @@
+# Smith-Waterman Alignment Assignment
+# Itertools: used for the permutations of the sequence
+# numpy: create and manipulate scoring matrix
+import itertools
+import numpy as np
+
+# Establishing the scoring matrix, I used a match score of +3, a gap cost of -2 and a mismatch of -1.
+def matrix(seq1, seq2, match_score=3, gap_penalty=2, mismatch_penalty=-1):
+    # This makes sure the first line in the matrix has zeros
+    H = np.zeros((len(seq1) + 1, len(seq2) + 1), int)
+
+    # This gives the numbers in the matrices with i (columns) and j (rows), the 1 is because of the initial lines of zeros
+    for i, j in itertools.product(range(1, H.shape[0]), range(1, H.shape[1])):
+        # This is the code that assigns the match score, gap penalty and mismatch penalty
+        match = H[i - 1, j - 1] + (match_score if seq1[i - 1] == seq2[j - 1] else mismatch_penalty)
+        delete = H[i - 1, j] - gap_penalty
+        insert = H[i, j - 1] - gap_penalty
+        H[i, j] = max(match, delete, insert, 0)
+    # Creates a loop which makes the function repeat to complex the matrix
+    return H
+
+# This gives the optimal traceback for sequence 1 and sequence 2 and identifies the pathway that gives the highest sequence alignment
+def traceback(H, b, b_='', old_i=0):
+    H_flip = np.flip(np.flip(H, 0), 1)
+    i_, j_ = np.unravel_index(H_flip.argmax(), H_flip.shape)
+    i, j = np.subtract(H.shape, (i_ + 1, j_ + 1))
+
+    #Checks the score of the current position. If the score is 0 then that is the traceback finished. If it is not finished then the alignment goes backwards to give the traceback.
+    if H[i, j] == 0:
+        return b_, j
+    b_ = b[j - 1] + '-' + b_ if old_i - i > 1 else b[j - 1] + b_
+    return traceback(H[0:i, 0:j], b, b_, i)
+
+# This allows for the best alignment to occur using the Smith-Waterman algorithm matrix.
+#This is achieved through calculating the scoring matrix H and performing a traceback of H to find the best alignment.
+def smith_waterman(a, b, match_score=3, gap_cost=2):
+    a, b = a.upper(), b.upper()  # Convert sequences to uppercase
+    H = matrix(a, b, match_score, gap_cost)
+    b_, pos = traceback(H, b)
+    return pos, pos + len(b_)
+
+# These are both of my sequences, 1 goes along the column and 2 goes along the row, can change for your data
+seq1 = "TGTATGATGGGGGCG"
+seq2 = "TGTCTGATTGGGTCG"
+
+# Implementing the matrix function for my two specific sequences
+H = matrix(seq1, seq2)
+
+# Print the scoring matrix with sequences
+print("Scoring Matrix (H):")
+# This aligns the letters with the numbers in the matrix
+print("  ", end="")
+
+# Print column headers as the letters in sequence 2 and then it inputs the actual numbers for the matrix
+for char in seq2:
+    print(f"{char:>3}", end="")
+print()
+
+#This prints with space so that it is much easier to read
+for row in H:
+    print(' '.join(f"{cell:2}" for cell in row))
+
+# This calculates the highest score in the matrix
+max_score = np.max(H)
+#Prints the maximum alignment score
+print("Maximum Alignment Score:", max_score)
+
+# Prints and performs the alignment
+start, end = smith_waterman(seq1, seq2)
+
+#This prints the best alignment from the start to the end
+print("\nBest Alignment:")
+print(seq1[start:end])
